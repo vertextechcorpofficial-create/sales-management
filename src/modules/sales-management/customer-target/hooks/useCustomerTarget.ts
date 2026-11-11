@@ -102,24 +102,15 @@ export function useCustomerTarget() {
 
   /**
    * Handle Classification change:
-   * Rule: When classification is selected, customer dropdown filters to customers in that classification.
-   * If current selected customer is not in this classification, reset customer selection.
+   * Rule: Reset customer selection automatically every time classification changes,
+   * refreshing the customer list with the correct accounts for the chosen classification.
    */
   const handleClassificationChange = (classId: string) => {
-    setFormData((prev) => {
-      let nextCustomerId = prev.customer_id;
-      if (classId) {
-        const currentCust = customers.find((c) => String(c.id) === prev.customer_id);
-        if (currentCust && String(currentCust.classification) !== classId) {
-          nextCustomerId = "";
-        }
-      }
-      return {
-        ...prev,
-        classification_id: classId,
-        customer_id: nextCustomerId,
-      };
-    });
+    setFormData((prev) => ({
+      ...prev,
+      classification_id: classId,
+      customer_id: "",
+    }));
   };
 
   /**
