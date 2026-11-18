@@ -146,6 +146,49 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Valid target quantity is required." }, { status: 400 });
     }
 
+    // Check existing target records for this customer to prevent duplicate / overlapping periods
+    const existingCheckRes = await fetch(
+      `${DIRECTUS_URL}/items/target_setting_customer?filter[customer_id][_eq]=${customer_id}&limit=-1`,
+      {
+        headers: fetchHeaders,
+        cache: "no-store",
+      }
+    );
+    const existingCheckJson = await existingCheckRes.json().catch(() => ({ data: [] }));
+    const existingRecords: Array<{
+      id: number;
+      supplier_id?: number | null;
+      product_id?: number | null;
+      date_from: string;
+      date_to: string;
+    }> = existingCheckJson.data || [];
+
+    const targetSuppId = supplier_id ? Number(supplier_id) : null;
+    const targetProdId = product_id ? Number(product_id) : null;
+
+    const hasDuplicate = existingRecords.some((rec) => {
+      const recSuppId = rec.supplier_id ? Number(rec.supplier_id) : null;
+      const recProdId = rec.product_id ? Number(rec.product_id) : null;
+
+      if (recSuppId !== targetSuppId) return false;
+      if (recProdId !== targetProdId) return false;
+
+      const recFrom = rec.date_from.split("T")[0];
+      const recTo = rec.date_to.split("T")[0];
+
+      return date_from <= recTo && date_to >= recFrom;
+    });
+
+    if (hasDuplicate) {
+      return NextResponse.json(
+        {
+          error:
+            "A target for this customer with matching parameters and overlapping period already exists. Please update the existing target.",
+        },
+        { status: 409 }
+      );
+    }
+
     const payload = {
       customer_id: Number(customer_id),
       classification_id: classification_id ? Number(classification_id) : null,

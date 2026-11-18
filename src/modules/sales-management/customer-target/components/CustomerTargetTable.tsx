@@ -23,6 +23,16 @@ import { CustomerTargetRecord, Supplier, CustomerClassification } from "../types
 import { Search, Trash2, Calendar, Database, Filter } from "lucide-react";
 import { SearchableSelect } from "./SearchableSelect";
 
+function formatDateToMMDDYYYY(dateStr?: string): string {
+  if (!dateStr) return "-";
+  const parts = dateStr.split("T")[0].split("-");
+  if (parts.length === 3) {
+    const [year, month, day] = parts;
+    return `${month}/${day}/${year}`;
+  }
+  return dateStr;
+}
+
 interface CustomerTargetTableProps {
   targets: CustomerTargetRecord[];
   allTargetsCount: number;
@@ -132,8 +142,8 @@ export function CustomerTargetTable({
                 <TableHead className="text-xs font-semibold">Classification</TableHead>
                 <TableHead className="text-xs font-semibold">Supplier</TableHead>
                 <TableHead className="text-xs font-semibold">Product</TableHead>
+                <TableHead className="text-xs font-semibold">To and From</TableHead>
                 <TableHead className="text-xs font-semibold">UOM</TableHead>
-                <TableHead className="text-xs font-semibold">Target Period</TableHead>
                 <TableHead className="text-right text-xs font-semibold">Target Qty</TableHead>
                 <TableHead className="w-[80px] text-center text-xs font-semibold">Action</TableHead>
               </TableRow>
@@ -198,15 +208,15 @@ export function CustomerTargetTable({
                       )}
                     </TableCell>
                     <TableCell>
-                      <span className="text-xs text-muted-foreground">{t.uom_name}</span>
-                    </TableCell>
-                    <TableCell>
                       <div className="flex items-center gap-1 text-xs text-muted-foreground font-mono">
                         <Calendar className="h-3 w-3 shrink-0" />
-                        <span>{t.date_from}</span>
+                        <span>{formatDateToMMDDYYYY(t.date_from)}</span>
                         <span>→</span>
-                        <span>{t.date_to}</span>
+                        <span>{formatDateToMMDDYYYY(t.date_to)}</span>
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-xs text-muted-foreground">{t.uom_name}</span>
                     </TableCell>
                     <TableCell className="text-right">
                       <span className="font-semibold text-xs font-mono text-primary">

@@ -396,6 +396,42 @@ export function useCustomerTarget() {
       return;
     }
 
+    // Check for duplicate / overlapping target entry for the same customer, supplier, and product
+    const newFrom = formData.date_from;
+    const newTo = formData.date_to;
+    const newCustId = Number(formData.customer_id);
+    const newSuppId = formData.supplier_id ? Number(formData.supplier_id) : null;
+    const newProdId = formData.product_id ? Number(formData.product_id) : null;
+
+    const duplicate = targets.find((t) => {
+      if (t.customer_id !== newCustId) return false;
+
+      // Same supplier parameter (both null or same ID)
+      const sameSupplier = (t.supplier_id ?? null) === newSuppId;
+      if (!sameSupplier) return false;
+
+      // Same product parameter (both null or same ID)
+      const sameProduct = (t.product_id ?? null) === newProdId;
+      if (!sameProduct) return false;
+
+      // Check date overlap: newFrom <= existing.date_to AND newTo >= existing.date_from
+      const existFrom = t.date_from.split("T")[0];
+      const existTo = t.date_to.split("T")[0];
+
+      return newFrom <= existTo && newTo >= existFrom;
+    });
+
+    if (duplicate) {
+      const formatDisplay = (d: string) => {
+        const p = d.split("T")[0].split("-");
+        return p.length === 3 ? `${p[1]}/${p[2]}/${p[0]}` : d;
+      };
+      toast.error(
+        `Target already exists for this customer with an overlapping period (${formatDisplay(duplicate.date_from)} → ${formatDisplay(duplicate.date_to)}). Please update the existing target or select another period.`
+      );
+      return;
+    }
+
     setSubmitting(true);
     try {
       const res = await fetch("/api/sales-management/customer-target", {
