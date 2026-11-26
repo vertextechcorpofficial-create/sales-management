@@ -82,6 +82,7 @@ export interface ProductPerSupplier {
 
 export interface CustomerTargetMetadataResponse {
   customers: Customer[];
+  totalCustomersCount?: number;
   classifications: CustomerClassification[];
   suppliers: Supplier[];
   products: Product[];

@@ -31,6 +31,12 @@ export function useCustomerTarget() {
 
   // Raw data from server
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customerOptionsList, setCustomerOptionsList] = useState<Customer[]>([]);
+  const [customerTotalCount, setCustomerTotalCount] = useState<number>(0);
+  const [customerSearch, setCustomerSearch] = useState<string>("");
+  const [loadingCustomers, setLoadingCustomers] = useState<boolean>(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+
   const [classifications, setClassifications] = useState<CustomerClassification[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -55,6 +61,9 @@ export function useCustomerTarget() {
       }
       const data: CustomerTargetMetadataResponse = await res.json();
       setCustomers(data.customers || []);
+      if (typeof data.totalCustomersCount === "number") {
+        setCustomerTotalCount(data.totalCustomersCount);
+      }
       setClassifications(data.classifications || []);
       setSuppliers(data.suppliers || []);
       setProducts(data.products || []);
@@ -73,6 +82,46 @@ export function useCustomerTarget() {
     fetchData();
   }, [fetchData]);
 
+  // Debounced server-side search for Customer dropdown (capped at 50 results)
+  useEffect(() => {
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      setLoadingCustomers(true);
+      try {
+        const qp = new URLSearchParams();
+        qp.set("resource", "customers");
+        qp.set("limit", "50");
+        if (customerSearch.trim()) {
+          qp.set("search", customerSearch.trim());
+        }
+        if (formData.classification_id) {
+          qp.set("classification_id", formData.classification_id);
+        }
+
+        const res = await fetch(`/api/sales-management/customer-target?${qp.toString()}`, {
+          signal: controller.signal,
+        });
+        if (!res.ok) return;
+        const json: { data?: Customer[]; total?: number } = await res.json();
+        setCustomerOptionsList(json.data || []);
+        if (typeof json.total === "number") {
+          setCustomerTotalCount(json.total);
+        }
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === "AbortError") return;
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoadingCustomers(false);
+        }
+      }
+    }, 200);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [customerSearch, formData.classification_id]);
+
   /**
    * Handle Customer change:
    * Rule: If selected customer has classification, auto-populate classification dropdown;
@@ -80,6 +129,7 @@ export function useCustomerTarget() {
    */
   const handleCustomerChange = (customerId: string) => {
     if (!customerId) {
+      setSelectedCustomer(null);
       setFormData((prev) => ({
         ...prev,
         customer_id: "",
@@ -87,7 +137,13 @@ export function useCustomerTarget() {
       return;
     }
 
-    const selectedCust = customers.find((c) => String(c.id) === customerId);
+    const selectedCust =
+      customerOptionsList.find((c) => String(c.id) === customerId) ||
+      customers.find((c) => String(c.id) === customerId) ||
+      (selectedCustomer && String(selectedCustomer.id) === customerId ? selectedCustomer : undefined);
+
+    setSelectedCustomer(selectedCust ?? null);
+
     let matchedClassificationId = "";
     if (selectedCust && selectedCust.classification != null) {
       matchedClassificationId = String(selectedCust.classification);
@@ -106,11 +162,19 @@ export function useCustomerTarget() {
    * refreshing the customer list with the correct accounts for the chosen classification.
    */
   const handleClassificationChange = (classId: string) => {
+    setSelectedCustomer(null);
+    setCustomerSearch("");
     setFormData((prev) => ({
       ...prev,
       classification_id: classId,
       customer_id: "",
     }));
+  };
+
+  const resetForm = () => {
+    setSelectedCustomer(null);
+    setCustomerSearch("");
+    setFormData(initialForm);
   };
 
   /**
@@ -267,18 +331,9 @@ export function useCustomerTarget() {
   }, [formData.product_id, products, units]);
 
   /**
-   * Filtered customer options based on selected classification:
-   * If classification is selected, show only customers assigned to that classification.
-   * Otherwise show all customers.
+   * Customer options for the dropdown (already paginated & filtered on the server).
    */
-  const filteredCustomers = useMemo(() => {
-    if (!formData.classification_id) {
-      return customers;
-    }
-    return customers.filter(
-      (c) => String(c.classification) === formData.classification_id
-    );
-  }, [customers, formData.classification_id]);
+  const filteredCustomers = customerOptionsList;
 
   /**
    * Filtered products based on selected supplier:
@@ -447,7 +502,7 @@ export function useCustomerTarget() {
 
       toast.success("Customer Target saved successfully!");
       // Reset form fields
-      setFormData(initialForm);
+      resetForm();
       // Reload targets
       fetchData();
     } catch (err: unknown) {
@@ -487,6 +542,11 @@ export function useCustomerTarget() {
     setFormData,
     customers,
     filteredCustomers,
+    customerTotalCount,
+    customerSearch,
+    setCustomerSearch,
+    loadingCustomers,
+    selectedCustomer,
     classifications,
     suppliers,
     products,
@@ -508,6 +568,7 @@ export function useCustomerTarget() {
     handleUomChange,
     handleSubmit,
     handleDeleteTarget,
+    resetForm,
     refreshData: fetchData,
   };
 }

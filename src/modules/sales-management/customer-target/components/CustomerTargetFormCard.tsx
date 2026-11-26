@@ -27,6 +27,11 @@ interface CustomerTargetFormCardProps {
   submitting: boolean;
   customers: Customer[];
   filteredCustomers: Customer[];
+  customerTotalCount: number;
+  customerSearch: string;
+  onCustomerSearchChange: (val: string) => void;
+  loadingCustomers: boolean;
+  selectedCustomer: Customer | null;
   classifications: CustomerClassification[];
   suppliers: Supplier[];
   products: Product[];
@@ -49,6 +54,11 @@ export function CustomerTargetFormCard({
   formData,
   submitting,
   filteredCustomers,
+  customerTotalCount,
+  customerSearch,
+  onCustomerSearchChange,
+  loadingCustomers,
+  selectedCustomer,
   classifications,
   suppliers,
   filteredProducts,
@@ -64,7 +74,7 @@ export function CustomerTargetFormCard({
   onSubmit,
   onReset,
 }: CustomerTargetFormCardProps) {
-  // Prep customer options
+  // Prep customer options (paginated/filtered from server)
   const customerOptions = React.useMemo(() => {
     return filteredCustomers.map((c) => ({
       value: String(c.id),
@@ -72,6 +82,17 @@ export function CustomerTargetFormCard({
       subLabel: [c.customer_code, c.city, c.province].filter(Boolean).join(" • "),
     }));
   }, [filteredCustomers]);
+
+  const selectedCustomerOption = React.useMemo(() => {
+    if (!selectedCustomer) return null;
+    return {
+      value: String(selectedCustomer.id),
+      label: selectedCustomer.customer_name || `Customer #${selectedCustomer.id}`,
+      subLabel: [selectedCustomer.customer_code, selectedCustomer.city, selectedCustomer.province]
+        .filter(Boolean)
+        .join(" • "),
+    };
+  }, [selectedCustomer]);
 
   // Prep classification options
   const classificationOptions = React.useMemo(() => {
@@ -175,13 +196,17 @@ export function CustomerTargetFormCard({
                     Customer <span className="text-destructive">*</span>
                   </Label>
                   <span className="text-[11px] text-muted-foreground">
-                    {filteredCustomers.length} available
+                    {customerTotalCount.toLocaleString()} available
                   </span>
                 </div>
                 <SearchableSelect
                   options={customerOptions}
                   value={formData.customer_id}
                   onValueChange={onCustomerChange}
+                  onSearchChange={onCustomerSearchChange}
+                  searchValue={customerSearch}
+                  loading={loadingCustomers}
+                  selectedOptionOverride={selectedCustomerOption}
                   placeholder="Select customer..."
                   searchPlaceholder="Search customer name or code..."
                   allowClear={true}

@@ -16,6 +16,11 @@ export default function CustomerTargetModule() {
     setFormData,
     customers,
     filteredCustomers,
+    customerTotalCount,
+    customerSearch,
+    setCustomerSearch,
+    loadingCustomers,
+    selectedCustomer,
     classifications,
     suppliers,
     products,
@@ -37,21 +42,9 @@ export default function CustomerTargetModule() {
     handleUomChange,
     handleSubmit,
     handleDeleteTarget,
+    resetForm,
     refreshData,
   } = useCustomerTarget();
-
-  const handleReset = () => {
-    setFormData({
-      customer_id: "",
-      classification_id: "",
-      supplier_id: "",
-      product_id: "",
-      date_from: "",
-      date_to: "",
-      uom_id: "",
-      qty: "",
-    });
-  };
 
   return (
     <div className="container mx-auto p-4 md:p-6 space-y-6 max-w-7xl">
@@ -86,6 +79,11 @@ export default function CustomerTargetModule() {
         submitting={submitting}
         customers={customers}
         filteredCustomers={filteredCustomers}
+        customerTotalCount={customerTotalCount}
+        customerSearch={customerSearch}
+        onCustomerSearchChange={setCustomerSearch}
+        loadingCustomers={loadingCustomers}
+        selectedCustomer={selectedCustomer}
         classifications={classifications}
         suppliers={suppliers}
         products={products}
@@ -101,7 +99,7 @@ export default function CustomerTargetModule() {
         onDateToChange={(val) => setFormData((prev) => ({ ...prev, date_to: val }))}
         onQtyChange={(val) => setFormData((prev) => ({ ...prev, qty: val }))}
         onSubmit={handleSubmit}
-        onReset={handleReset}
+        onReset={resetForm}
       />
 
       {/* Targets Table */}
